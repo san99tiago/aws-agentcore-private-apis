@@ -6,15 +6,17 @@ Infraestructura AWS CDK en Python para desplegar un entorno de demos de agentes 
 
 ### Arquitectura General - AgentCore Gateway + MCP + AWS
 
-![Arquitectura Gateway MCP AWS](arquitecture-gateway-mcp-aws.png)
+![Arquitectura Gateway MCP AWS](./assets/arquitecture-gateway-mcp-aws.png)
 
 ### Targets Configurados
 
-![Targets Demo 01](targets-demo-01.png)
+![Targets Demo 01](./assets/00-mcp-gateway-apis.png)
 
-![Targets Demo 02](target-demo-02.png)
+![Targets Demo 02](./assets/01-mcp-gateway-targets.png)
 
-![Targets Demo 03](targets-demo-03.png)
+![Targets Demo 03](./assets/02-mcp-gateway-demo-A.png)
+
+![Targets Demo 04](./assets/03-mcp-gateway-demo-B.png)
 
 ---
 
