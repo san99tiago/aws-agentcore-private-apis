@@ -1,0 +1,16 @@
+[
+  {
+    "name": "getBalanceByUsername",
+    "description": "Consultar saldo y cuentas bancarias de un usuario. Usuarios disponibles: santi, moni, jero, joachim, fabi, chucho, herb, vale, naz, javi, elkin. Retorna las cuentas (savings/checking) con saldo en COP.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Nombre de usuario para consultar saldo (ej: santi, moni, jero, joachim, fabi, chucho, herb, vale, naz, javi, elkin)"
+        }
+      },
+      "required": ["username"]
+    }
+  }
+]

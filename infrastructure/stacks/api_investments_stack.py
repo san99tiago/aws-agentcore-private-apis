@@ -5,20 +5,17 @@ import aws_cdk as cdk
 from aws_cdk import (
     aws_apigateway as apigw,
     aws_dynamodb as dynamodb,
-    aws_ec2 as ec2,
     aws_iam as iam,
     aws_lambda as _lambda,
 )
 from constructs import Construct
 
 
-class ApiAtmStack(cdk.Stack):
+class ApiInvestmentsStack(cdk.Stack):
     def __init__(
         self,
         scope: Construct,
         construct_id: str,
-        vpc: ec2.Vpc,
-        vpce_id: str,
         config: dict,
         **kwargs,
     ) -> None:
@@ -26,15 +23,12 @@ class ApiAtmStack(cdk.Stack):
 
         prefix = config["resources_name"]
         env_suffix = config["deployment_environment"]
-        table_name_cfg = config["atm_table_name"]
-        lambda_name_cfg = config["atm_lambda_name"]
-        api_name_cfg = config["atm_api_name"]
 
-        # DynamoDB table with Single Table Design (PK + SK)
+        # DynamoDB table
         table = dynamodb.Table(
             self,
-            "AtmTable",
-            table_name=f"{prefix}-{table_name_cfg}-{env_suffix}",
+            "InvestmentsTable",
+            table_name=f"{prefix}-investments-table-{env_suffix}",
             partition_key=dynamodb.Attribute(
                 name="PK", type=dynamodb.AttributeType.STRING
             ),
@@ -43,11 +37,11 @@ class ApiAtmStack(cdk.Stack):
             removal_policy=cdk.RemovalPolicy.DESTROY,
         )
 
-        # Lambda function for ATM machines health API
-        atm_lambda = _lambda.Function(
+        # Lambda function
+        investments_lambda = _lambda.Function(
             self,
-            "AtmMachinesHealthFunction",
-            function_name=f"{prefix}-{lambda_name_cfg}-{env_suffix}",
+            "InvestmentProductsFunction",
+            function_name=f"{prefix}-investment-products-fn-{env_suffix}",
             runtime=_lambda.Runtime.PYTHON_3_12,
             handler="index.handler",
             code=_lambda.Code.from_asset(
@@ -56,66 +50,84 @@ class ApiAtmStack(cdk.Stack):
                     "..",
                     "..",
                     "lambdas",
-                    "atm_machines_health",
+                    "investment_products",
                 )
             ),
             environment={"TABLE_NAME": table.table_name},
         )
 
-        # Grant Lambda read access to the DynamoDB table
-        table.grant_read_data(atm_lambda)
+        table.grant_read_data(investments_lambda)
 
-        # Load OpenAPI schema and substitute LambdaArn placeholder
+        # Load OpenAPI schema and substitute LambdaArn
         openapi_path = os.path.join(
-            os.path.dirname(__file__), "..", "openapi", "atm-machines-health-api.json"
+            os.path.dirname(__file__), "..", "openapi", "investment-products-api.json"
         )
         with open(openapi_path, "r") as f:
             openapi_schema = json.load(f)
 
-        # Replace Fn::Sub placeholders with actual Lambda ARN
-        self._replace_lambda_arn(openapi_schema, atm_lambda.function_arn)
+        self._replace_lambda_arn(openapi_schema, investments_lambda.function_arn)
 
-        # Private REST API Gateway from OpenAPI schema
+        # PUBLIC REST API Gateway with API Key required
         api = apigw.SpecRestApi(
             self,
-            "AtmMachinesHealthApi",
-            rest_api_name=f"{prefix}-{api_name_cfg}-{env_suffix}",
+            "InvestmentProductsApi",
+            rest_api_name=f"{prefix}-investment-products-api-{env_suffix}",
             api_definition=apigw.ApiDefinition.from_inline(openapi_schema),
-            endpoint_types=[apigw.EndpointType.PRIVATE],
-            policy=iam.PolicyDocument(
-                statements=[
-                    iam.PolicyStatement(
-                        effect=iam.Effect.ALLOW,
-                        principals=[iam.AnyPrincipal()],
-                        actions=["execute-api:Invoke"],
-                        resources=["execute-api:/*"],
-                        conditions={
-                            "StringEquals": {
-                                "aws:sourceVpce": vpce_id,
-                            }
-                        },
-                    )
-                ]
-            ),
+            endpoint_types=[apigw.EndpointType.REGIONAL],
             deploy_options=apigw.StageOptions(stage_name="prod"),
         )
 
-        # Grant API Gateway permission to invoke the Lambda function
-        atm_lambda.add_permission(
+        # Create API Key
+        api_key = apigw.ApiKey(
+            self,
+            "InvestmentsApiKey",
+            api_key_name=f"{prefix}-investments-api-key-{env_suffix}",
+            enabled=True,
+        )
+
+        # Create Usage Plan and attach API Key
+        usage_plan = apigw.UsagePlan(
+            self,
+            "InvestmentsUsagePlan",
+            name=f"{prefix}-investments-usage-plan-{env_suffix}",
+            api_stages=[
+                apigw.UsagePlanPerApiStage(
+                    api=api,
+                    stage=api.deployment_stage,
+                )
+            ],
+            throttle=apigw.ThrottleSettings(
+                rate_limit=100,
+                burst_limit=50,
+            ),
+        )
+
+        usage_plan.add_api_key(api_key)
+
+        # Grant API Gateway permission to invoke Lambda
+        investments_lambda.add_permission(
             "ApiGatewayInvoke",
             principal=iam.ServicePrincipal("apigateway.amazonaws.com"),
             source_arn=api.arn_for_execute_api(),
         )
 
-        # Expose table name for setup scripts
+        # Expose outputs
         self.table_name = table.table_name
-
-        # Expose API URL for adapter Lambdas
         self.api_url = api.url
+
+        # CfnOutputs
+        cdk.CfnOutput(
+            self, "ApiUrl", value=api.url, description="Investment Products API URL"
+        )
+        cdk.CfnOutput(
+            self,
+            "ApiKeyId",
+            value=api_key.key_id,
+            description="API Key ID (retrieve value from console or CLI)",
+        )
 
     @staticmethod
     def _replace_lambda_arn(schema: dict, lambda_arn: str) -> None:
-        """Recursively replace Fn::Sub LambdaArn placeholders with Fn::Sub array format."""
         if isinstance(schema, dict):
             if "Fn::Sub" in schema:
                 template = schema["Fn::Sub"]
@@ -127,7 +139,7 @@ class ApiAtmStack(cdk.Stack):
                     ]
                 return
             for value in schema.values():
-                ApiAtmStack._replace_lambda_arn(value, lambda_arn)
+                ApiInvestmentsStack._replace_lambda_arn(value, lambda_arn)
         elif isinstance(schema, list):
             for item in schema:
-                ApiAtmStack._replace_lambda_arn(item, lambda_arn)
+                ApiInvestmentsStack._replace_lambda_arn(item, lambda_arn)

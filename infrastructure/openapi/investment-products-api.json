@@ -1,0 +1,129 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Investment Products API",
+    "description": "API pública para consultar productos de inversión de usuarios",
+    "version": "1.0.0"
+  },
+  "x-amazon-apigateway-api-key-source": "HEADER",
+  "paths": {
+    "/investments/{username}": {
+      "get": {
+        "summary": "Consultar productos de inversión por usuario",
+        "description": "Retorna los productos de inversión del usuario especificado",
+        "operationId": "getInvestmentsByUsername",
+        "security": [
+          {
+            "api_key": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "description": "Nombre de usuario para consultar inversiones",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Productos de inversión obtenidos exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+          },
+          "passthroughBehavior": "when_no_match"
+        },
+        "x-amazon-apigateway-request-validator": "params-only"
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "api_key": {
+        "type": "apiKey",
+        "name": "x-api-key",
+        "in": "header"
+      }
+    },
+    "schemas": {
+      "Investment": {
+        "type": "object",
+        "properties": {
+          "username": { "type": "string" },
+          "product_type": {
+            "type": "string",
+            "enum": [
+              "Fiduciaria",
+              "CDT",
+              "Crypto",
+              "Bono",
+              "TES",
+              "Cuenta Global",
+              "Acciones"
+            ]
+          },
+          "product_name": { "type": "string" },
+          "invested_amount": { "type": "number" },
+          "current_value": { "type": "number" },
+          "currency": { "type": "string" },
+          "return_rate": { "type": "number" },
+          "start_date": { "type": "string" },
+          "maturity_date": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      },
+      "InvestmentsResponse": {
+        "type": "object",
+        "properties": {
+          "investments": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Investment" }
+          },
+          "username": { "type": "string" },
+          "count": { "type": "integer" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+[
+  {
+    "name": "listAtms",
+    "description": "Listar todos los cajeros automáticos (ATMs) con su estado de salud en Medellín y Bogotá, Colombia. Retorna atm_id, address, coordenadas, status, cash_level y ciudad.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": []
+    }
+  },
+  {
+    "name": "listAtmsByCity",
+    "description": "Listar cajeros automáticos (ATMs) filtrados por ciudad. Ciudades disponibles: medellin, bogota. Retorna atm_id, address, coordenadas, status, cash_level.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "string",
+          "description": "Nombre de la ciudad para filtrar cajeros (medellin o bogota)"
+        }
+      },
+      "required": ["city"]
+    }
+  }
+]

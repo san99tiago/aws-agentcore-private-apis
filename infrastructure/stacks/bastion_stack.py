@@ -26,7 +26,7 @@ class BastionStack(cdk.Stack):
             ],
         )
 
-        # Security group allowing outbound traffic to VPC CIDR
+        # Security group allowing outbound traffic
         security_group = ec2.SecurityGroup(
             self,
             "BastionSecurityGroup",
@@ -36,6 +36,14 @@ class BastionStack(cdk.Stack):
             allow_all_outbound=False,
         )
 
+        # Allow HTTPS outbound to internet (required for SSM Agent to communicate with AWS services)
+        security_group.add_egress_rule(
+            peer=ec2.Peer.any_ipv4(),
+            connection=ec2.Port.tcp(443),
+            description="Allow HTTPS outbound for SSM Agent and AWS services",
+        )
+
+        # Allow all outbound traffic to VPC CIDR (for private API calls)
         security_group.add_egress_rule(
             peer=ec2.Peer.ipv4(vpc.vpc_cidr_block),
             connection=ec2.Port.all_traffic(),
@@ -57,4 +65,5 @@ class BastionStack(cdk.Stack):
             ),
             role=role,
             security_group=security_group,
+            associate_public_ip_address=True,
         )

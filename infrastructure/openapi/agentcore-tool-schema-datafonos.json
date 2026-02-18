@@ -1,0 +1,25 @@
+[
+  {
+    "name": "listDatafonos",
+    "description": "Listar todos los datáfonos (dispositivos de pago) con su estado de salud en Medellín y Bogotá, Colombia. Retorna device_id, merchant_name, address, coordenadas, status y ciudad.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": []
+    }
+  },
+  {
+    "name": "listDatafonosByCity",
+    "description": "Listar datáfonos (dispositivos de pago) filtrados por ciudad. Ciudades disponibles: medellin, bogota. Retorna device_id, merchant_name, address, coordenadas, status.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "city": {
+          "type": "string",
+          "description": "Nombre de la ciudad para filtrar datáfonos (medellin o bogota)"
+        }
+      },
+      "required": ["city"]
+    }
+  }
+]

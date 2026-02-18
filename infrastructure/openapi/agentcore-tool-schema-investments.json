@@ -1,0 +1,16 @@
+[
+  {
+    "name": "getInvestmentsByUsername",
+    "description": "Consultar productos de inversión de un usuario. Usuarios disponibles: santi, moni, jero, joachim, fabi, chucho, herb, vale, naz, javi, elkin. Retorna productos como Fiduciaria, CDT, Crypto, Bono, TES, Cuenta Global y Acciones con montos invertidos, valor actual, tasa de retorno y estado en COP.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Nombre de usuario para consultar inversiones (ej: santi, moni, jero, joachim, fabi, chucho, herb, vale, naz, javi, elkin)"
+        }
+      },
+      "required": ["username"]
+    }
+  }
+]

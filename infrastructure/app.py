@@ -14,6 +14,10 @@ from infrastructure.stacks.bastion_stack import BastionStack
 from infrastructure.stacks.api_datafonos_stack import ApiDatafonosStack
 from infrastructure.stacks.api_balance_stack import ApiBalanceStack
 from infrastructure.stacks.api_atm_stack import ApiAtmStack
+from infrastructure.stacks.agentcore_gateway_adapters_stack import (
+    AgentCoreGatewayAdaptersStack,
+)
+from infrastructure.stacks.api_investments_stack import ApiInvestmentsStack
 
 app = cdk.App()
 
@@ -51,6 +55,24 @@ api_atm_stack = ApiAtmStack(
     "ApiAtmStack",
     vpc=vpc_stack.vpc,
     vpce_id=endpoints_stack.api_vpce_id,
+    config=config,
+)
+
+# AgentCore Gateway adapter Lambdas (proxy to Private APIs from VPC)
+adapters_stack = AgentCoreGatewayAdaptersStack(
+    app,
+    "AgentCoreGatewayAdaptersStack",
+    vpc=vpc_stack.vpc,
+    datafonos_api_url=api_datafonos_stack.api_url,
+    balance_api_url=api_balance_stack.api_url,
+    atm_api_url=api_atm_stack.api_url,
+    config=config,
+)
+
+# Investment Products API (PUBLIC with API Key)
+api_investments_stack = ApiInvestmentsStack(
+    app,
+    "ApiInvestmentsStack",
     config=config,
 )
 

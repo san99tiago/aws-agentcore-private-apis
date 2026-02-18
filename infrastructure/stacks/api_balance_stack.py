@@ -106,6 +106,9 @@ class ApiBalanceStack(cdk.Stack):
         # Expose table name for setup scripts
         self.table_name = table.table_name
 
+        # Expose API URL for adapter Lambdas
+        self.api_url = api.url
+
     @staticmethod
     def _replace_lambda_arn(schema: dict, lambda_arn: str) -> None:
         """Recursively replace Fn::Sub LambdaArn placeholders with Fn::Sub array format."""
