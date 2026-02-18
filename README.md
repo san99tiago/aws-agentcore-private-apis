@@ -1,52 +1,70 @@
 # 🏦 AgentCore Demos Infrastructure
 
-Infraestructura AWS CDK en Python para desplegar un entorno de demos de agentes inteligentes. El sistema consiste en **3 APIs privadas** respaldadas por funciones Lambda y tablas DynamoDB, accesibles únicamente desde una VPC a través de un bastion host EC2 con AWS SSM.
+Infraestructura AWS CDK en Python para desplegar un entorno de demos de agentes inteligentes. El sistema consiste en **3 APIs privadas** + **1 API pública** respaldadas por funciones Lambda y tablas DynamoDB, **3 Lambda adapters** para AgentCore Gateway, accesibles desde una VPC a través de un bastion host EC2 con AWS SSM.
 
-## 📐 Arquitectura
+## 🖼️ Arquitectura y Targets
+
+### Arquitectura General - AgentCore Gateway + MCP + AWS
+
+![Arquitectura Gateway MCP AWS](arquitecture-gateway-mcp-aws.png)
+
+### Targets Configurados
+
+![Targets Demo 01](targets-demo-01.png)
+
+![Targets Demo 02](target-demo-02.png)
+
+![Targets Demo 03](targets-demo-03.png)
+
+---
+
+## 📐 Arquitectura Detallada
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        VPC (2 AZs)                                  │
-│                                                                     │
-│  ┌──────────────────────┐    ┌────────────────────────────────────┐ │
-│  │   Public Subnets      │    │       Private Subnets              │ │
-│  │                        │    │                                    │ │
-│  │  ┌──────────────────┐ │    │  ┌──────────────────────────────┐ │ │
-│  │  │  EC2 Bastion Host │ │    │  │  VPC Endpoint (execute-api)  │ │ │
-│  │  │  Amazon Linux 2023│ │    │  └──────────────────────────────┘ │ │
-│  │  │  SSM Enabled      │ │    │                                    │ │
-│  │  └──────────────────┘ │    └────────────────────────────────────┘ │
-│  └──────────────────────┘                                           │
-│                                                                     │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │              VPC Gateway Endpoints                            │   │
-│  │              • DynamoDB    • S3                                │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
-         │
-         │  SSM Session Manager
-         ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Private API Gateways                              │
-│                                                                     │
-│  ┌───────────────────┐ ┌──────────────────┐ ┌────────────────────┐ │
-│  │ Datafonos Health   │ │ Get Balance      │ │ ATM Machines Health│ │
-│  │ API                │ │ API              │ │ API                │ │
-│  │ GET /datafonos     │ │ GET /balance/    │ │ GET /atms          │ │
-│  │ GET /datafonos/    │ │     {username}   │ │ GET /atms/{city}   │ │
-│  │     {city}         │ │                  │ │                    │ │
-│  └────────┬──────────┘ └────────┬─────────┘ └────────┬───────────┘ │
-│           │                     │                     │             │
-│  ┌────────▼──────────┐ ┌───────▼──────────┐ ┌───────▼───────────┐ │
-│  │ Lambda Function    │ │ Lambda Function  │ │ Lambda Function   │ │
-│  │ (Python 3.12)      │ │ (Python 3.12)    │ │ (Python 3.12)     │ │
-│  └────────┬──────────┘ └───────┬──────────┘ └───────┬───────────┘ │
-│           │                     │                     │             │
-│  ┌────────▼──────────┐ ┌───────▼──────────┐ ┌───────▼───────────┐ │
-│  │ DynamoDB Table     │ │ DynamoDB Table   │ │ DynamoDB Table    │ │
-│  │ (PK/SK)            │ │ (PK/SK)          │ │ (PK/SK)           │ │
-│  └───────────────────┘ └──────────────────┘ └───────────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            VPC (2 AZs)                                  │
+│                                                                         │
+│  ┌──────────────────────┐    ┌────────────────────────────────────────┐ │
+│  │   Public Subnets      │    │         Private Subnets                │ │
+│  │                        │    │                                        │ │
+│  │  ┌──────────────────┐ │    │  ┌──────────────────────────────────┐ │ │
+│  │  │  EC2 Bastion Host │ │    │  │  VPC Endpoint (execute-api)      │ │ │
+│  │  │  Amazon Linux 2023│ │    │  └──────────────────────────────────┘ │ │
+│  │  │  SSM Enabled      │ │    │                                        │ │
+│  │  └──────────────────┘ │    │  ┌──────────────────────────────────┐ │ │
+│  └──────────────────────┘    │  │  Lambda Adapters (x3)             │ │ │
+│                               │  │  → Proxy to Private APIs          │ │ │
+│  ┌──────────────────────────┐│  │  (AgentCore Gateway targets)      │ │ │
+│  │  VPC Gateway Endpoints   ││  └──────────────────────────────────┘ │ │
+│  │  • DynamoDB    • S3      ││                                        │ │
+│  └──────────────────────────┘└────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
+         │                                          │
+         │  SSM Session Manager                     │  AgentCore Gateway
+         ▼                                          ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      Private API Gateways (VPC Only)                    │
+│                                                                         │
+│  ┌───────────────────┐ ┌──────────────────┐ ┌────────────────────────┐ │
+│  │ Datafonos Health   │ │ Get Balance      │ │ ATM Machines Health    │ │
+│  │ GET /datafonos     │ │ GET /balance/    │ │ GET /atms              │ │
+│  │ GET /datafonos/    │ │     {username}   │ │ GET /atms/{city}       │ │
+│  │     {city}         │ │                  │ │                        │ │
+│  └────────┬──────────┘ └────────┬─────────┘ └────────┬───────────────┘ │
+│           ▼                     ▼                     ▼                 │
+│     Lambda + DynamoDB     Lambda + DynamoDB     Lambda + DynamoDB       │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                   Public API Gateway (API Key Required)                  │
+│                                                                         │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │ Investment Products API                                          │   │
+│  │ GET /investments/{username}    🔑 x-api-key header required      │   │
+│  └──────────────────────┬───────────────────────────────────────────┘   │
+│                         ▼                                               │
+│                   Lambda + DynamoDB                                      │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## 📁 Estructura del Proyecto
@@ -62,30 +80,50 @@ Infraestructura AWS CDK en Python para desplegar un entorno de demos de agentes 
 │   ├── __init__.py
 │   ├── app.py                        # Entry point CDK - instancia todos los stacks
 │   ├── openapi/
-│   │   ├── datafonos-health-api.json # OpenAPI schema - Datafonos API
-│   │   ├── get-balance-api.json      # OpenAPI schema - Balance API
-│   │   └── atm-machines-health-api.json # OpenAPI schema - ATM API
+│   │   ├── datafonos-health-api.json          # OpenAPI - Datafonos API (Private)
+│   │   ├── get-balance-api.json               # OpenAPI - Balance API (Private)
+│   │   ├── atm-machines-health-api.json       # OpenAPI - ATM API (Private)
+│   │   ├── investment-products-api.json       # OpenAPI - Investments API (Public + API Key)
+│   │   ├── agentcore-tool-schema-datafonos.json   # MCP Tool Schema - Datafonos
+│   │   ├── agentcore-tool-schema-balance.json     # MCP Tool Schema - Balance
+│   │   ├── agentcore-tool-schema-atm.json         # MCP Tool Schema - ATM
+│   │   └── agentcore-tool-schema-investments.json # MCP Tool Schema - Investments
 │   └── stacks/
 │       ├── __init__.py
-│       ├── vpc_stack.py              # VPC con subnets públicas y privadas
-│       ├── endpoints_stack.py        # VPC Endpoints (DynamoDB, S3, execute-api)
-│       ├── bastion_stack.py          # EC2 Bastion Host con SSM
-│       ├── api_datafonos_stack.py    # API + Lambda + DynamoDB (Datáfonos)
-│       ├── api_balance_stack.py      # API + Lambda + DynamoDB (Balances)
-│       └── api_atm_stack.py          # API + Lambda + DynamoDB (ATMs)
+│       ├── vpc_stack.py                       # VPC con subnets públicas y privadas
+│       ├── endpoints_stack.py                 # VPC Endpoints (DynamoDB, S3, execute-api)
+│       ├── bastion_stack.py                   # EC2 Bastion Host con SSM
+│       ├── api_datafonos_stack.py             # Private API + Lambda + DynamoDB (Datáfonos)
+│       ├── api_balance_stack.py               # Private API + Lambda + DynamoDB (Balances)
+│       ├── api_atm_stack.py                   # Private API + Lambda + DynamoDB (ATMs)
+│       ├── api_investments_stack.py           # Public API + Lambda + DynamoDB (Investments)
+│       └── agentcore_gateway_adapters_stack.py # Lambda adapters for AgentCore Gateway
 │
 ├── lambdas/
 │   ├── datafonos_health/
 │   │   └── index.py                  # Handler: GET /datafonos, GET /datafonos/{city}
 │   ├── get_balance/
 │   │   └── index.py                  # Handler: GET /balance/{username}
-│   └── atm_machines_health/
-│       └── index.py                  # Handler: GET /atms, GET /atms/{city}
+│   ├── atm_machines_health/
+│   │   └── index.py                  # Handler: GET /atms, GET /atms/{city}
+│   ├── investment_products/
+│   │   └── index.py                  # Handler: GET /investments/{username}
+│   ├── adapter_datafonos/
+│   │   └── index.py                  # Proxy adapter: Datafonos Private API
+│   ├── adapter_balance/
+│   │   └── index.py                  # Proxy adapter: Balance Private API
+│   └── adapter_atm/
+│       └── index.py                  # Proxy adapter: ATM Private API
 │
-└── setup/
-    ├── populate_datafonos.py         # Genera 100 datáfonos simulados
-    ├── populate_atms.py              # Genera 25 ATMs simulados
-    └── populate_balances.py          # Genera cuentas para 11 usuarios
+├── setup/
+│   ├── populate_datafonos.py         # Genera 100 datáfonos simulados
+│   ├── populate_atms.py              # Genera 25 ATMs simulados
+│   ├── populate_balances.py          # Genera cuentas para 11 usuarios
+│   └── populate_investments.py       # Genera inversiones para 11 usuarios
+│
+└── real-tests/
+    ├── rufus_bank_agent.py           # Agente interactivo Rufus Bank (Strands + MCP)
+    └── 00_invoke_mcp_tools_no_auth.py # Test de MCP tools
 ```
 
 ---
@@ -302,6 +340,62 @@ API privada para consultar el estado de cajeros automáticos (ATMs) en Medellín
 
 ---
 
+### Stack 7: `ApiInvestmentsStack` — API Pública de Productos de Inversión
+
+**Archivo:** `infrastructure/stacks/api_investments_stack.py`
+
+API pública (REGIONAL) con API Key para consultar productos de inversión de usuarios. A diferencia de las otras APIs, esta es accesible desde internet con autenticación por API Key.
+
+| Recurso             | Nombre                                   | Descripción                                |
+| ------------------- | ---------------------------------------- | ------------------------------------------ |
+| **DynamoDB Table**  | `{prefix}-investments-table-{env}`       | PK (string) + SK (string), PAY_PER_REQUEST |
+| **Lambda Function** | `{prefix}-investment-products-fn-{env}`  | Python 3.12, handler `index.handler`       |
+| **API Gateway**     | `{prefix}-investment-products-api-{env}` | REST API pública REGIONAL, stage `prod`    |
+| **API Key**         | `{prefix}-investments-api-key-{env}`     | API Key requerida en header `x-api-key`    |
+| **Usage Plan**      | `{prefix}-investments-usage-plan-{env}`  | Throttle: 100 req/s, burst 50              |
+
+**Endpoints:**
+
+| Método | Ruta                      | Auth    | Descripción                      | DynamoDB Operation          |
+| ------ | ------------------------- | ------- | -------------------------------- | --------------------------- |
+| `GET`  | `/investments/{username}` | API Key | Consulta inversiones por usuario | `query(PK=USER#{username})` |
+
+**Modelo de datos DynamoDB:**
+
+| Atributo          | Tipo   | Ejemplo                                                                         |
+| ----------------- | ------ | ------------------------------------------------------------------------------- |
+| `PK`              | String | `USER#santi`                                                                    |
+| `SK`              | String | `INVESTMENT#CDT#abc123`                                                         |
+| `username`        | String | `santi`                                                                         |
+| `product_type`    | String | `Fiduciaria` / `CDT` / `Crypto` / `Bono` / `TES` / `Cuenta Global` / `Acciones` |
+| `product_name`    | String | `CDT 360 días`, `Bitcoin (BTC)`, `Bono Ecopetrol`                               |
+| `invested_amount` | Number | `25000000` (COP)                                                                |
+| `current_value`   | Number | `27500000` (COP)                                                                |
+| `currency`        | String | `COP`                                                                           |
+| `return_rate`     | Number | `10.5` (%)                                                                      |
+| `start_date`      | String | `2025-06-15`                                                                    |
+| `maturity_date`   | String | `2026-06-15` o `N/A`                                                            |
+| `status`          | String | `active` / `matured` / `pending`                                                |
+
+---
+
+### Stack 8: `AgentCoreGatewayAdaptersStack` — Lambda Adapters para AgentCore Gateway
+
+**Archivo:** `infrastructure/stacks/agentcore_gateway_adapters_stack.py`
+
+3 Lambda functions desplegadas en las subnets privadas de la VPC que actúan como proxy entre AgentCore Gateway y las Private APIs. Necesarias porque AgentCore Gateway no soporta targets de API privadas directamente.
+
+| Recurso               | Nombre                             | Proxy hacia              |
+| --------------------- | ---------------------------------- | ------------------------ |
+| **Datafonos Adapter** | `{prefix}-adapter-datafonos-{env}` | Private Datafonos API    |
+| **Balance Adapter**   | `{prefix}-adapter-balance-{env}`   | Private Balance API      |
+| **ATM Adapter**       | `{prefix}-adapter-atm-{env}`       | Private ATM API          |
+| **Security Group**    | `{prefix}-adapter-sg-{env}`        | HTTPS egress al VPC CIDR |
+
+Cada Lambda recibe `API_BASE_URL` como variable de entorno (URL del Private API Gateway correspondiente) y hace HTTP GET al endpoint privado.
+
+---
+
 ## ⚙️ Configuración Dinámica (`cdk.json`)
 
 Toda la configuración de nombres de recursos se centraliza en `cdk.json` bajo `context.appconfig`. Esto permite cambiar nombres y ambientes sin tocar código Python.
@@ -340,23 +434,30 @@ Todos los recursos AWS siguen el patrón:
 
 **Ejemplo con configuración por defecto (`prod`):**
 
-| Recurso          | Nombre en AWS                                  |
-| ---------------- | ---------------------------------------------- |
-| VPC              | `agentcore-demos-vpc-prod`                     |
-| Public Subnet    | `agentcore-demos-public-subnet-prod`           |
-| Private Subnet   | `agentcore-demos-private-subnet-prod`          |
-| Bastion Instance | `agentcore-demos-bastion-prod`                 |
-| Bastion Role     | `agentcore-demos-bastion-role-prod`            |
-| Bastion SG       | `agentcore-demos-bastion-sg-prod`              |
-| Datafonos Table  | `agentcore-demos-datafonos-table-prod`         |
-| Datafonos Lambda | `agentcore-demos-datafonos-health-fn-prod`     |
-| Datafonos API    | `agentcore-demos-datafonos-health-api-prod`    |
-| Balance Table    | `agentcore-demos-balance-table-prod`           |
-| Balance Lambda   | `agentcore-demos-get-balance-fn-prod`          |
-| Balance API      | `agentcore-demos-get-balance-api-prod`         |
-| ATM Table        | `agentcore-demos-atm-table-prod`               |
-| ATM Lambda       | `agentcore-demos-atm-machines-health-fn-prod`  |
-| ATM API          | `agentcore-demos-atm-machines-health-api-prod` |
+| Recurso             | Nombre en AWS                                  |
+| ------------------- | ---------------------------------------------- |
+| VPC                 | `agentcore-demos-vpc-prod`                     |
+| Public Subnet       | `agentcore-demos-public-subnet-prod`           |
+| Private Subnet      | `agentcore-demos-private-subnet-prod`          |
+| Bastion Instance    | `agentcore-demos-bastion-prod`                 |
+| Bastion Role        | `agentcore-demos-bastion-role-prod`            |
+| Bastion SG          | `agentcore-demos-bastion-sg-prod`              |
+| Datafonos Table     | `agentcore-demos-datafonos-table-prod`         |
+| Datafonos Lambda    | `agentcore-demos-datafonos-health-fn-prod`     |
+| Datafonos API       | `agentcore-demos-datafonos-health-api-prod`    |
+| Balance Table       | `agentcore-demos-balance-table-prod`           |
+| Balance Lambda      | `agentcore-demos-get-balance-fn-prod`          |
+| Balance API         | `agentcore-demos-get-balance-api-prod`         |
+| ATM Table           | `agentcore-demos-atm-table-prod`               |
+| ATM Lambda          | `agentcore-demos-atm-machines-health-fn-prod`  |
+| ATM API             | `agentcore-demos-atm-machines-health-api-prod` |
+| Investments Table   | `agentcore-demos-investments-table-prod`       |
+| Investments Lambda  | `agentcore-demos-investment-products-fn-prod`  |
+| Investments API     | `agentcore-demos-investment-products-api-prod` |
+| Investments API Key | `agentcore-demos-investments-api-key-prod`     |
+| Adapter Datafonos   | `agentcore-demos-adapter-datafonos-prod`       |
+| Adapter Balance     | `agentcore-demos-adapter-balance-prod`         |
+| Adapter ATM         | `agentcore-demos-adapter-atm-prod`             |
 
 ### Multi-Environment Deployment
 
@@ -372,7 +473,7 @@ Esto genera recursos con sufijo `-dev` en lugar de `-prod`, permitiendo tener m�
 
 ## 🔒 Seguridad
 
-### APIs Privadas
+### APIs Privadas (Datafonos, Balance, ATM)
 
 Las 3 APIs son de tipo **PRIVATE** y solo son accesibles desde dentro de la VPC a través del VPC Endpoint de `execute-api`. Cada API tiene una **resource policy** que restringe el acceso exclusivamente al VPC Endpoint:
 
@@ -389,6 +490,14 @@ Las 3 APIs son de tipo **PRIVATE** y solo son accesibles desde dentro de la VPC 
   }
 }
 ```
+
+### API Pública (Investment Products)
+
+La API de inversiones es **REGIONAL** (pública) protegida con **API Key**:
+
+- Requiere header `x-api-key` en cada request
+- Usage Plan con throttling (100 req/s, burst 50)
+- Para obtener el valor del API Key: `aws apigateway get-api-key --api-key <KEY_ID> --include-value`
 
 ### Bastion Host
 
@@ -407,13 +516,16 @@ Las 3 APIs son de tipo **PRIVATE** y solo son accesibles desde dentro de la VPC 
 
 Los scripts en `setup/` generan datos simulados realistas para las tablas DynamoDB.
 
-| Script                  | Registros     | Ciudades                   | Uso                                             |
-| ----------------------- | ------------- | -------------------------- | ----------------------------------------------- |
-| `populate_datafonos.py` | 100 datáfonos | Medellín (50), Bogotá (50) | `python setup/populate_datafonos.py TABLE_NAME` |
-| `populate_atms.py`      | 25 ATMs       | Medellín (13), Bogotá (12) | `python setup/populate_atms.py TABLE_NAME`      |
-| `populate_balances.py`  | ~20 cuentas   | N/A (11 usuarios)          | `python setup/populate_balances.py TABLE_NAME`  |
+| Script                    | Registros       | Ciudades                   | Uso                                               |
+| ------------------------- | --------------- | -------------------------- | ------------------------------------------------- |
+| `populate_datafonos.py`   | 100 datáfonos   | Medellín (50), Bogotá (50) | `python setup/populate_datafonos.py TABLE_NAME`   |
+| `populate_atms.py`        | 25 ATMs         | Medellín (13), Bogotá (12) | `python setup/populate_atms.py TABLE_NAME`        |
+| `populate_balances.py`    | ~20 cuentas     | N/A (11 usuarios)          | `python setup/populate_balances.py TABLE_NAME`    |
+| `populate_investments.py` | ~35 inversiones | N/A (11 usuarios)          | `python setup/populate_investments.py TABLE_NAME` |
 
-**Usuarios disponibles para consulta de saldo:** `santi`, `moni`, `jero`, `joachim`, `fabi`, `chucho`, `herb`, `vale`, `naz`, `javi`, `elkin`
+**Usuarios disponibles:** `santi`, `moni`, `jero`, `joachim`, `fabi`, `chucho`, `herb`, `vale`, `naz`, `javi`, `elkin`
+
+**Productos de inversión:** Fiduciaria, CDT, Crypto, Bono, TES, Cuenta Global, Acciones
 
 Los datos incluyen:
 
@@ -427,20 +539,21 @@ Los datos incluyen:
 ## 🔗 Dependencias entre Stacks
 
 ```
-VpcStack ──────┬──────► EndpointsStack ──────┬──► ApiDatafonosStack
-               │                              ├──► ApiBalanceStack
-               │                              └──► ApiAtmStack
+VpcStack ──────┬──────► EndpointsStack ──────┬──► ApiDatafonosStack ──┐
+               │                              ├──► ApiBalanceStack ────┤
+               │                              └──► ApiAtmStack ────────┤
+               │                                                       │
+               ├──────► BastionStack                                   │
+               │                                                       ▼
+               ├──────► AgentCoreGatewayAdaptersStack ◄── (API URLs from above)
                │
-               ├──────► BastionStack
-               │
-               ├──────► ApiDatafonosStack
-               ├──────► ApiBalanceStack
-               └──────► ApiAtmStack
+               └──────► (ApiInvestmentsStack is standalone, no VPC needed)
 ```
 
-- **VpcStack** → Provee `vpc` a todos los demás stacks
-- **EndpointsStack** → Provee `api_vpce_id` a los 3 API stacks
-- Los API stacks reciben tanto `vpc` como `vpce_id`
+- **VpcStack** → Provee `vpc` a todos los stacks de red
+- **EndpointsStack** → Provee `api_vpce_id` a los 3 API stacks privados
+- **API stacks privados** → Proveen `api_url` al AgentCoreGatewayAdaptersStack
+- **ApiInvestmentsStack** → Standalone (API pública, no necesita VPC)
 
 ---
 
