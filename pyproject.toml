@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "agentic-demos-infra"
+version = "0.1.0"
+description = "AWS CDK Python infrastructure for deploying agentic demos with private APIs, Lambda functions, and DynamoDB"
+authors = ["Santi"]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<4.0"
+aws-cdk-lib = "^2.170.0"
+constructs = "^10.4.2"
+boto3 = "^1.35.0"
+
+[tool.poetry.group.dev.dependencies]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,126 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Get Balance API",
+    "description": "API privada para consultar saldos de usuarios",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/balance/{username}": {
+      "get": {
+        "summary": "Consultar saldo por usuario",
+        "description": "Retorna la información de saldo y cuenta del usuario especificado",
+        "operationId": "getBalanceByUsername",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "description": "Nombre de usuario para consultar saldo",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Saldo del usuario obtenido exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Usuario no encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+          },
+          "passthroughBehavior": "when_no_match"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Balance": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "description": "Nombre del usuario"
+          },
+          "account_type": {
+            "type": "string",
+            "enum": ["savings", "checking"],
+            "description": "Tipo de cuenta"
+          },
+          "balance": {
+            "type": "number",
+            "description": "Saldo de la cuenta"
+          },
+          "currency": {
+            "type": "string",
+            "description": "Moneda de la cuenta"
+          },
+          "last_updated": {
+            "type": "string",
+            "description": "Timestamp de última actualización"
+          }
+        }
+      },
+      "BalanceResponse": {
+        "type": "object",
+        "properties": {
+          "accounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Balance"
+            }
+          },
+          "username": {
+            "type": "string",
+            "description": "Nombre del usuario consultado"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Número de cuentas retornadas"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Mensaje de error"
+          }
+        }
+      }
+    }
+  }
+}

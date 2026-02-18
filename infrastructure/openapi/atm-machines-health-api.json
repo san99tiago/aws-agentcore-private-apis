@@ -1,0 +1,172 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "ATM Machines Health API",
+    "description": "API privada para consultar la salud de cajeros automáticos",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/atms": {
+      "get": {
+        "summary": "Listar todos los cajeros automáticos",
+        "description": "Retorna la lista completa de cajeros automáticos con su estado de salud",
+        "operationId": "listAtms",
+        "responses": {
+          "200": {
+            "description": "Lista de cajeros obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtmsResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+          },
+          "passthroughBehavior": "when_no_match"
+        }
+      }
+    },
+    "/atms/{city}": {
+      "get": {
+        "summary": "Listar cajeros automáticos por ciudad",
+        "description": "Retorna la lista de cajeros automáticos filtrados por ciudad",
+        "operationId": "listAtmsByCity",
+        "parameters": [
+          {
+            "name": "city",
+            "in": "path",
+            "required": true,
+            "description": "Nombre de la ciudad (medellin o bogota)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de cajeros por ciudad obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AtmsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ciudad no encontrada o sin cajeros",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+          },
+          "passthroughBehavior": "when_no_match"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Atm": {
+        "type": "object",
+        "properties": {
+          "atm_id": {
+            "type": "string",
+            "description": "Identificador único del cajero automático"
+          },
+          "address": {
+            "type": "string",
+            "description": "Dirección del cajero"
+          },
+          "latitude": {
+            "type": "number",
+            "description": "Coordenada de latitud"
+          },
+          "longitude": {
+            "type": "number",
+            "description": "Coordenada de longitud"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["online", "offline", "low_cash", "maintenance"],
+            "description": "Estado del cajero automático"
+          },
+          "cash_level": {
+            "type": "string",
+            "enum": ["high", "medium", "low", "empty"],
+            "description": "Nivel de efectivo del cajero"
+          },
+          "last_service": {
+            "type": "string",
+            "description": "Timestamp de último servicio"
+          },
+          "city": {
+            "type": "string",
+            "description": "Ciudad donde se encuentra el cajero"
+          }
+        }
+      },
+      "AtmsResponse": {
+        "type": "object",
+        "properties": {
+          "atms": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Atm"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "description": "Número total de cajeros retornados"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Mensaje de error"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,171 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Datafonos Health API",
+    "description": "API privada para consultar la salud de datáfonos",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/datafonos": {
+      "get": {
+        "summary": "Listar todos los datáfonos",
+        "description": "Retorna la lista completa de datáfonos con su estado de salud",
+        "operationId": "listDatafonos",
+        "responses": {
+          "200": {
+            "description": "Lista de datáfonos obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatafonosResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+          },
+          "passthroughBehavior": "when_no_match"
+        }
+      }
+    },
+    "/datafonos/{city}": {
+      "get": {
+        "summary": "Listar datáfonos por ciudad",
+        "description": "Retorna la lista de datáfonos filtrados por ciudad",
+        "operationId": "listDatafonosByCity",
+        "parameters": [
+          {
+            "name": "city",
+            "in": "path",
+            "required": true,
+            "description": "Nombre de la ciudad (medellin o bogota)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de datáfonos por ciudad obtenida exitosamente",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatafonosResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Ciudad no encontrada o sin datáfonos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error interno del servidor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": {
+            "Fn::Sub": "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+          },
+          "passthroughBehavior": "when_no_match"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Datafono": {
+        "type": "object",
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "description": "Identificador único del datáfono"
+          },
+          "merchant_name": {
+            "type": "string",
+            "description": "Nombre del comercio"
+          },
+          "address": {
+            "type": "string",
+            "description": "Dirección del comercio"
+          },
+          "latitude": {
+            "type": "number",
+            "description": "Coordenada de latitud"
+          },
+          "longitude": {
+            "type": "number",
+            "description": "Coordenada de longitud"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "inactive", "maintenance"],
+            "description": "Estado del datáfono"
+          },
+          "last_transaction": {
+            "type": "string",
+            "description": "Timestamp de última transacción"
+          },
+          "city": {
+            "type": "string",
+            "description": "Ciudad donde se encuentra el datáfono"
+          }
+        }
+      },
+      "DatafonosResponse": {
+        "type": "object",
+        "properties": {
+          "datafonos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Datafono"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "description": "Número total de datáfonos retornados"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Mensaje de error"
+          }
+        }
+      }
+    }
+  }
+}
